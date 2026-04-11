@@ -70,7 +70,7 @@ class FullNode:
         #validate if the input is transaction is actually in the UTXO database, don't need to if coinbase
         database_backup = copy.deepcopy(self.UTXO_Database_Pending)
         inputSum = 0
-        if not Tx['COINBASE']:
+        if not Tx['COINBASE'] == 1:
             for item in Tx['inputs']:
                 prevTxnId     = item[0]
                 output_number = item[1]
@@ -192,10 +192,16 @@ class FullNode:
         return
 
     def showAccounts(self):
-        """return a dictionary with mapping from pubkeyHash to total crypto available
-		Uses the PENDING UTXO database
-		"""
-        return
+        balances = {}
+        for key, val in self.UTXO_Database_Pending.items():
+            if val == True:  # skip coinbase duplicate markers
+                continue
+            value, pubKeyHash = val[0], val[1]
+            if pubKeyHash not in balances:
+                balances[pubKeyHash] = 0
+            balances[pubKeyHash] += value
+        print(balances)
+        return balances
 
     ## PART TWO ##
 
