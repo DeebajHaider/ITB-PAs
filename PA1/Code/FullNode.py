@@ -32,6 +32,8 @@ class FullNode:
         self.corrupt_transactions = {}  # Initialize known invalid TXNs. To be appended to (by you, later). These are transactions whose signatures don't match or their output > input
         self.UTXO_Database_Pending = {}  # This is a temporary UTXO database you may use.
         self.UTXO_Database = {}
+        self.balances = {}
+        self.processed_transactions = set()
 
     def last_block(self):
         """
@@ -45,6 +47,7 @@ class FullNode:
 
     ## Add code for part 1 here (You can make as many helper function you want)
     def verifyTransaction(self, Tx):
+        #print(f"COINBASE value: {Tx['COINBASE']}, type: {type(Tx['COINBASE'])}")
         # verfy each input transaction signature
         for item in Tx['inputs']:
             prevTxnId     = item[0]
@@ -55,22 +58,23 @@ class FullNode:
             #verify if signature is vaid for each input
             currentHash = calculateHash(stringifyTransactionExcludeSig(Tx))
             finalString = str(prevTxnId) + ":" + str(currentHash)
-            finalHash = calculateHash(finalString)
             
-            if not VerifySignature(str(finalHash), signature, item[3]):
+            if not VerifySignature(finalString, signature, PubKey):
                 self.corrupt_transactions[Tx['id']] = Tx
                 return False
             
             #check if pubkeyhash of parent is same as pubkyhash of this one
-            if (self.getParentOutputPubKeyHash(prevTxnId, output_number) != hashPubKey(PubKey)):
-                self.corrupt_transactions[Tx['id']] = Tx
-                return False
+            if (prevTxnId, output_number) in self.UTXO_Database_Pending:
+                stored_pubkey_hash = self.UTXO_Database_Pending[(prevTxnId, output_number)][1]
+                if stored_pubkey_hash != hashPubKey(PubKey):
+                    self.corrupt_transactions[Tx['id']] = Tx
+                    return False
             
             
         #validate if the input is transaction is actually in the UTXO database, don't need to if coinbase
         database_backup = copy.deepcopy(self.UTXO_Database_Pending)
         inputSum = 0
-        if not Tx['COINBASE'] == 1:
+        if Tx['COINBASE'] is False:
             for item in Tx['inputs']:
                 prevTxnId     = item[0]
                 output_number = item[1]
@@ -81,10 +85,12 @@ class FullNode:
                     inputSum += self.UTXO_Database_Pending[(prevTxnId, output_number)][0]
                     del self.UTXO_Database_Pending[(prevTxnId, output_number)]
         else:
+            #print("This is a coinbase transaction")
             #5^9 satoshis
             inputSum = 5000000000
             if Tx['id'] in self.UTXO_Database_Pending:
-                return False  # duplicate coinbase
+                self.UTXO_Database_Pending = database_backup
+                return False
             self.UTXO_Database_Pending[Tx['id']] = True  # duplicate prevention marker
                 
         #calculate value of outputs
@@ -102,17 +108,9 @@ class FullNode:
         for i, output in enumerate(Tx['outputs']):
             self.UTXO_Database_Pending[(Tx['id'], i)] = (output[0], output[1])
 
+        self.processed_transactions.add(Tx['id'])
         return True
             
-            
-    def getParentOutputPubKeyHash(self, TxID, output_number):
-        for tx in self.confirmed_transactions:
-            if tx['id'] == TxID:
-                return tx['outputs'][output_number][1]
-        for tx in self.all_unconfirmed_transactions:
-            if tx['id'] == TxID:
-                return tx['outputs'][output_number][1]
-        return None
             
 
     def findValidButUnconfirmedTransactions(self):
@@ -192,16 +190,19 @@ class FullNode:
         return
 
     def showAccounts(self):
-        balances = {}
+        #print(self.UTXO_Database_Pending)
+        for key, value in self.balances.items():
+            self.balances[key] = 0
         for key, val in self.UTXO_Database_Pending.items():
-            if val == True:  # skip coinbase duplicate markers
+            if val is True:  # skip coinbase duplicate markers
                 continue
             value, pubKeyHash = val[0], val[1]
-            if pubKeyHash not in balances:
-                balances[pubKeyHash] = 0
-            balances[pubKeyHash] += value
-        print(balances)
-        return balances
+            if pubKeyHash not in self.balances:
+                self.balances[pubKeyHash] = 0
+            self.balances[pubKeyHash] += value
+        #for key, val in self.balances.items():
+            #print(f'Account {key} has balance {val}')
+        return self.balances
 
     ## PART TWO ##
 
@@ -217,6 +218,7 @@ class FullNode:
         self.valid_chain, self.confirmed_transactions = load_valid_chain()
         MAIN_DIR = "pending_chains"
         subdirectories = [name for name in os.listdir(MAIN_DIR) if os.path.isdir(os.path.join(MAIN_DIR, name))]
+        
         if not subdirectories:
             print("No pending chains found to validate.")
             return False
