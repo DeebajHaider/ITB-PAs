@@ -34,6 +34,7 @@ class FullNode:
         self.UTXO_Database = {}
         self.balances = {}
         self.processed_transactions = set()
+        self.current_block = None
 
     def last_block(self):
         """
@@ -165,7 +166,25 @@ class FullNode:
         """
         # Save block to physical memory here.
         # Syntax to store block: save_object(new_block,"valid_chain/block{}.block".format(new_block.index))
-        return
+        if update == True:
+            self.update_UTXO()
+            self.findValidButUnconfirmedTransactions()
+            self.current_block = Block(0, [], "", "", "")
+            self.current_block.index = self.last_block().index + 1
+            self.current_block.transactions = list(self.valid_but_unconfirmed_transactions.values())
+            self.current_block.time_stamp = str(datetime.datetime.now().strftime("%d-%m-%Y (%H:%M:%S)"))
+            self.current_block.previous_hash = self.computeBlockHash(self.last_block())
+            self.current_block.nonce = startingNonce
+            self.current_block.miner = self.STUDENT_ID
+        
+        block_hash, nonce = self.proof_of_work(self.current_block)
+        if block_hash == 0:
+            return nonce
+        else:
+            self.valid_chain.append(self.current_block)
+            save_object(self.current_block, "valid_chain/block{}.block".format(self.current_block.index))
+            return 0
+            
 
     def proof_of_work(self, block):
         """
@@ -183,7 +202,18 @@ class FullNode:
         Returns: (hash_string, nonce)  on success
                  (0, nonce)            on early exit (limit reached, keep trying)
         """
-        pass
+        #just for safety, practically the nonce should always be a multiple of 10
+        #since we start from 0 and increment with 10
+        start = block.nonce
+        if start % 10 != 0:
+            start = start + (10 - start % 10)
+        
+        for nonce in range(start, start + 50000, 10):
+            block.nonce = nonce
+            block_hash = self.computeBlockHash(block)
+            if block_hash.startswith('0' * self.DIFFICULTY):
+                return block_hash, nonce
+        return 0, block.nonce
 
     def computeBlockHash(self, block):  # Compute the aggregate transaction hash.
         block_string = json.dumps(block.__dict__, sort_keys=True)
