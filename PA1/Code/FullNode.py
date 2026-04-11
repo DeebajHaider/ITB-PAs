@@ -29,7 +29,7 @@ class FullNode:
         self.all_unconfirmed_transactions = []  # all Raw unconfirmed txns from mempool
         self.valid_but_unconfirmed_transactions = {}
         self.valid_chain, self.confirmed_transactions = load_valid_chain()  # Your valid chain, all the TXNs in that valid chain
-        self.corrupt_transactions = {}  # Initialize known invalid TXNs. To be appended to (by you, later). These are transactions whose signatures don't match or their output > input
+        self.corrupt_transactions = []  # Initialize known invalid TXNs. To be appended to (by you, later). These are transactions whose signatures don't match or their output > input
         self.UTXO_Database_Pending = {}  # This is a temporary UTXO database you may use.
         self.UTXO_Database = {}
         self.balances = {}
@@ -61,14 +61,14 @@ class FullNode:
             finalString = str(prevTxnId) + ":" + str(currentHash)
             
             if not VerifySignature(finalString, signature, PubKey):
-                self.corrupt_transactions[Tx['id']] = Tx
+                self.corrupt_transactions.append(Tx)
                 return False
             
             #check if pubkeyhash of parent is same as pubkyhash of this one
             if (prevTxnId, output_number) in self.UTXO_Database_Pending:
                 stored_pubkey_hash = self.UTXO_Database_Pending[(prevTxnId, output_number)][1]
                 if stored_pubkey_hash != hashPubKey(PubKey):
-                    self.corrupt_transactions[Tx['id']] = Tx
+                    self.corrupt_transactions.append(Tx)
                     return False
             
             
@@ -101,7 +101,7 @@ class FullNode:
                 
         #vaidate if value of inputs is greater than value of outputs
         if (inputSum < outputSum):
-            self.corrupt_transactions[Tx['id']] = Tx
+            self.corrupt_transactions.append(Tx)
             self.UTXO_Database_Pending = database_backup
             return False
         
@@ -254,17 +254,17 @@ class FullNode:
 
     def validate_pending_chains(self):
         """
-		DO NOT EDIT
-		This method loads pending chains from the 'pending_chains' folder.
-		It then calls verify_chain method on each chain performing a series of validity checks
-		if all the tests pass, it replaces the current valid chain with pending chain and saves it in valid chain folder.
-		"""
+        DO NOT EDIT
+        This method loads pending chains from the 'pending_chains' folder.
+        It then calls verify_chain method on each chain performing a series of validity checks
+        if all the tests pass, it replaces the current valid chain with pending chain and saves it in valid chain folder.
+        """
+
         Found = False
 
         self.valid_chain, self.confirmed_transactions = load_valid_chain()
         MAIN_DIR = "pending_chains"
         subdirectories = [name for name in os.listdir(MAIN_DIR) if os.path.isdir(os.path.join(MAIN_DIR, name))]
-        
         if not subdirectories:
             print("No pending chains found to validate.")
             return False
@@ -303,32 +303,53 @@ class FullNode:
         return Found
 
     def verify_chain(self, current_longest, temp_chain, last_block_hash):
-        # current_longest is the longest chain including any overlap with your valid chain
-		# temp_chain is only the difference between your valid chain and the current longest chain
-		# last_block_hash is the hash of the previous block of temp_chain[0]. If there is no overlap, for example, this should be
-		# the hash of the genesis block
-        # Steps to be followed:
-        # Step 1: Check linkage
-        # Step 2: Check indices
-        # Step 3: Check PoW
-        # Step 4: Rebuild UTXO and validate transactions
-        """
-		This method performs the following validity checks on the input temp, or pending, chain.
-			- whether length of temp_chain is greater than current valid chain (consider checking indexes)
-			- whether previous hashes of blocks correspond to calculated block hashes of previous blocks
-			- whether the difficulty setting has been achieved
-			- whether each transaction is valid
-				- no two or more transactions have same id
-				- the signature in transaction is valid
-				- The UTXO calculation is correct (input = sum of outputs)
-		Return True if all is good
-		Return False if failed any one of the checks
+        print(f"verify_chain called with {len(temp_chain)} temp blocks, {len(current_longest)} total")
+        if current_longest[-1].index <= self.valid_chain[-1].index:
+            print("FAIL: incoming chain is not longer")
+            return False
+        target = '0' * self.DIFFICULTY
+        temp_start_index = temp_chain[0].index
 
-		temp_chain: your peer's blocks/chain that is being tested
-		current_longest: your valid chain + temp_chain/new blocks your peer mined
-		last_block_hash: the hash of your last block
-		"""
-        return False
+        current_longest.sort(key=lambda b: b.index)
+        temp_chain.sort(key=lambda b: b.index)
+
+        prev_hash = last_block_hash
+        prev_index = temp_start_index - 1
+
+        for block in temp_chain:
+            if block.index != prev_index + 1:
+                print(f"FAIL index at block {block.index}")
+                return False
+            if block.previous_hash != prev_hash:
+                print(f"FAIL hash linkage at block {block.index}")
+                return False
+            block_hash = self.computeBlockHash(block)
+            if block_hash[:self.DIFFICULTY] != target:
+                print(f"FAIL difficulty at block {block.index}, hash: {block_hash[:10]}")
+                return False
+            prev_hash = block_hash
+            prev_index = block.index
+
+        self.UTXO_Database_Pending = {}
+        for block in current_longest:
+            if block.index == 0:
+                continue
+            if block.index >= temp_start_index:
+                break
+            for Tx in block.transactions:
+                self.verifyTransaction(Tx)
+
+        for block in temp_chain:
+            block_utxo_snapshot = copy.deepcopy(self.UTXO_Database_Pending)
+            for Tx in block.transactions:
+                if not self.verifyTransaction(Tx):
+                    print(f"FAIL transaction {Tx['id']} in block {block.index}")
+                    self.UTXO_Database_Pending = block_utxo_snapshot
+                    return False
+
+        print("PASSED verify_chain")
+        return True
+
 
     def print_chain(self):
         """
