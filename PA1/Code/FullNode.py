@@ -115,7 +115,17 @@ class FullNode:
 
     def findValidButUnconfirmedTransactions(self):
         # find 5 valid transactions that are NOT in a block yet
-        pass
+        self.UTXO_Database_Pending = copy.deepcopy(self.UTXO_Database)
+        self.valid_but_unconfirmed_transactions = {}
+        validTx = 0
+        for tx in self.unconfirmed_transactions:
+            if(self.verifyTransaction(tx)):
+                validTx += 1
+                self.valid_but_unconfirmed_transactions[tx['id']] = tx
+                if validTx == 5:
+                    break
+        return self.valid_but_unconfirmed_transactions
+                
 
 	## PART TWO - Mining and Proof-Of-Work ##
 	# Mine Blocks -- skip genesis block
