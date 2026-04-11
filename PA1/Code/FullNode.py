@@ -186,8 +186,14 @@ class FullNode:
         return Tx['number']
 
     def update_UTXO(self, till=-1):
-        # Update your UTXO database according to your VALID_CHAIN folder.
-        return
+        self.UTXO_Database_Pending = {}
+        for block in self.valid_chain:
+            if block.index == 0:
+                continue
+            for tx in block.transactions:
+                self.verifyTransaction(tx)
+        self.UTXO_Database = copy.deepcopy(self.UTXO_Database_Pending)
+        return 
 
     def showAccounts(self):
         #print(self.UTXO_Database_Pending)
