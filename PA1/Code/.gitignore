@@ -1,0 +1,36 @@
+# Directories to ignore
+pending_chains/
+mempool/
+valid_chain/
+__pycache__/
+
+# Python-related files
+*.py[cod]
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+.pytest_cache/
+.coverage
+*.so
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files
+.env
+.venv
+env/
+venv/
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
