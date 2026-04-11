@@ -1,0 +1,31 @@
+# Ignore other assignment folders
+BLOCKUNLEASHED/
+HAHAHAHAH/
+HCUKFSE/
+HELLOMOTO/
+
+# General Python ignores
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.eggs/
+dist/
+build/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files
+.env
+.venv
+env/
+venv/
+
+# Logs
+*.log

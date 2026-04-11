@@ -68,12 +68,41 @@ class FullNode:
             
             
         #validate if the input is transaction is actually in the UTXO database, don't need to if coinbase
-            
-            
+        database_backup = copy.deepcopy(self.UTXO_Database_Pending)
+        inputSum = 0
+        if not Tx['COINBASE']:
+            for item in Tx['inputs']:
+                prevTxnId     = item[0]
+                output_number = item[1]
+                if (prevTxnId, output_number) not in self.UTXO_Database_Pending:
+                    self.UTXO_Database_Pending = database_backup
+                    return False
+                else:
+                    inputSum += self.UTXO_Database_Pending[(prevTxnId, output_number)][0]
+                    del self.UTXO_Database_Pending[(prevTxnId, output_number)]
+        else:
+            #5^9 satoshis
+            inputSum = 5000000000
+            if Tx['id'] in self.UTXO_Database_Pending:
+                return False  # duplicate coinbase
+            self.UTXO_Database_Pending[Tx['id']] = True  # duplicate prevention marker
+                
+        #calculate value of outputs
+        outputSum = 0
+        for item in Tx['outputs']:
+            outputSum += item[0]
+                
         #vaidate if value of inputs is greater than value of outputs
-            
-        #if valid, then remove input transaction from UTXO database
-            
+        if (inputSum < outputSum):
+            self.corrupt_transactions[Tx['id']] = Tx
+            self.UTXO_Database_Pending = database_backup
+            return False
+        
+        #if valid, then add output transaction to UTXO database
+        for i, output in enumerate(Tx['outputs']):
+            self.UTXO_Database_Pending[(Tx['id'], i)] = (output[0], output[1])
+
+        return True
             
             
     def getParentOutputPubKeyHash(self, TxID, output_number):
@@ -85,8 +114,6 @@ class FullNode:
                 return tx['outputs'][output_number][1]
         return None
             
-            
-        
 
     def findValidButUnconfirmedTransactions(self):
         # find 5 valid transactions that are NOT in a block yet
