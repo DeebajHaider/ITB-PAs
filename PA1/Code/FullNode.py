@@ -45,7 +45,48 @@ class FullNode:
 
     ## Add code for part 1 here (You can make as many helper function you want)
     def verifyTransaction(self, Tx):
-        pass
+        # verfy each input transaction signature
+        for item in Tx['inputs']:
+            prevTxnId     = item[0]
+            output_number = item[1]
+            signature     = item[2]
+            PubKey        = item[3]
+            
+            #verify if signature is vaid for each input
+            currentHash = calculateHash(stringifyTransactionExcludeSig(Tx))
+            finalString = str(prevTxnId) + ":" + str(currentHash)
+            finalHash = calculateHash(finalString)
+            
+            if not VerifySignature(str(finalHash), signature, item[3]):
+                self.corrupt_transactions[Tx['id']] = Tx
+                return False
+            
+            #check if pubkeyhash of parent is same as pubkyhash of this one
+            if (self.getParentOutputPubKeyHash(prevTxnId, output_number) != hashPubKey(PubKey)):
+                self.corrupt_transactions[Tx['id']] = Tx
+                return False
+            
+            
+        #validate if the input is transaction is actually in the UTXO database, don't need to if coinbase
+            
+            
+        #vaidate if value of inputs is greater than value of outputs
+            
+        #if valid, then remove input transaction from UTXO database
+            
+            
+            
+    def getParentOutputPubKeyHash(self, TxID, output_number):
+        for tx in self.confirmed_transactions:
+            if tx['id'] == TxID:
+                return tx['outputs'][output_number][1]
+        for tx in self.all_unconfirmed_transactions:
+            if tx['id'] == TxID:
+                return tx['outputs'][output_number][1]
+        return None
+            
+            
+        
 
     def findValidButUnconfirmedTransactions(self):
         # find 5 valid transactions that are NOT in a block yet
