@@ -3,6 +3,7 @@ import time
 import pickle
 from Block import Block
 import os
+import re
 from hashing import *
 import datetime
 import json
@@ -251,7 +252,6 @@ class FullNode:
         return self.balances
 
     ## PART TWO ##
-
     def validate_pending_chains(self):
         """
         DO NOT EDIT
@@ -272,7 +272,8 @@ class FullNode:
             temp_chain = []
             DIR = MAIN_DIR + "/" + directory
             block_indexes = [name for name in os.listdir(DIR) if os.path.isfile(os.path.join(DIR, name))]
-            block_indexes.sort()
+            block_indexes.sort(key=lambda x: int(re.search(r'\d+', x).group()))
+
             for block_index in block_indexes:
                 try:
                     with open(DIR + '/{}'.format(block_index), 'rb') as inp:
@@ -303,19 +304,44 @@ class FullNode:
         return Found
 
     def verify_chain(self, current_longest, temp_chain, last_block_hash):
+        """
+        # current_longest is the longest chain including any overlap with your valid chain
+		# temp_chain is only the difference between your valid chain and the current longest chain
+		# last_block_hash is the hash of the previous block of temp_chain[0]. If there is no overlap, for example, this should be
+		# the hash of the genesis block
+        # Steps to be followed:
+        # Step 1: Check linkage
+        # Step 2: Check indices
+        # Step 3: Check PoW
+        # Step 4: Rebuild UTXO and validate transactions
+        
+		This method performs the following validity checks on the input temp, or pending, chain.
+			- whether length of temp_chain is greater than current valid chain (consider checking indexes)
+			- whether previous hashes of blocks correspond to calculated block hashes of previous blocks
+			- whether the difficulty setting has been achieved
+			- whether each transaction is valid
+				- no two or more transactions have same id
+				- the signature in transaction is valid
+				- The UTXO calculation is correct (input = sum of outputs)
+		Return True if all is good
+		Return False if failed any one of the checks
+        """
         print(f"verify_chain called with {len(temp_chain)} temp blocks, {len(current_longest)} total")
+        #incoming chain must be longer than the alrady existing one
         if current_longest[-1].index <= self.valid_chain[-1].index:
             print("FAIL: incoming chain is not longer")
             return False
         target = '0' * self.DIFFICULTY
         temp_start_index = temp_chain[0].index
 
+        #sorts both chains by index, sort of unecessary but sorted as a sanity check
         current_longest.sort(key=lambda b: b.index)
         temp_chain.sort(key=lambda b: b.index)
 
         prev_hash = last_block_hash
         prev_index = temp_start_index - 1
 
+        #checking temp chain's blocks for validity: index, hash linkage, difficulty
         for block in temp_chain:
             if block.index != prev_index + 1:
                 print(f"FAIL index at block {block.index}")
@@ -330,6 +356,7 @@ class FullNode:
             prev_hash = block_hash
             prev_index = block.index
 
+        #resetting UTXO database to empty, validating all the blocks in our longest chain
         self.UTXO_Database_Pending = {}
         for block in current_longest:
             if block.index == 0:
@@ -339,6 +366,7 @@ class FullNode:
             for Tx in block.transactions:
                 self.verifyTransaction(Tx)
 
+        #using a copy of UTXO to validate incoming chain transactions, updating own UTXO if valid.
         for block in temp_chain:
             block_utxo_snapshot = copy.deepcopy(self.UTXO_Database_Pending)
             for Tx in block.transactions:
