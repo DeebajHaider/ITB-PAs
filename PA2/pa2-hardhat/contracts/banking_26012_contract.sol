@@ -191,6 +191,16 @@ contract BankingSystem {
         // - enforce loan limit (based on balance)
         // - update principal loan
         // - transfer ETH
+        require((owner != tx.origin), "Error, Owner Prohibited");
+        require((userAccounts[tx.origin].exists), "No Account");
+        require((loanAmount <= loan_funds), "Insufficient Loan Funds");
+        require((loanAmount <= 2 * userAccounts[tx.origin].balance), "Loan Limit Exceeded");
+
+        userAccounts[tx.origin].principal_Loan += loanAmount;
+        loan_funds -= loanAmount;
+        
+        (bool success, ) = payable(tx.origin).call{value: loanAmount}("");
+        require(success, "Transfer failed");
     }
 
     function InquireLoan() public view returns (
@@ -201,6 +211,12 @@ contract BankingSystem {
         // TODO:
         // - ensure account exists
         // - return loan info
+        require((owner != tx.origin), "Error, Owner Prohibited");
+        require((userAccounts[tx.origin].exists), "No Account");
+
+        principal = userAccounts[tx.origin].principal_Loan;
+        interest = userAccounts[tx.origin].interest_Loan;
+        total = principal + interest;
     }
 
     function returnLoan() public payable {
@@ -210,6 +226,22 @@ contract BankingSystem {
         // - prevent overpayment
         // - pay interest first, then principal
         // - update operational_funds and loan_funds
+        require((owner != tx.origin), "Error, Owner Prohibited");
+        require((userAccounts[tx.origin].exists), "No Account");
+        require((userAccounts[tx.origin].principal_Loan > 0), "No Loan");
+        require((msg.value <= userAccounts[tx.origin].principal_Loan + userAccounts[tx.origin].interest_Loan), "Owed Amount Exceeded");
+
+        if (msg.value <= userAccounts[tx.origin].interest_Loan){
+            operational_funds += msg.value;
+            userAccounts[tx.origin].interest_Loan -= msg.value;
+        }
+        else {
+            uint temp = msg.value -userAccounts[tx.origin].interest_Loan;
+            operational_funds += userAccounts[tx.origin].interest_Loan;
+            userAccounts[tx.origin].interest_Loan = 0;
+            userAccounts[tx.origin].principal_Loan -= temp;
+            loan_funds += temp;
+        }
     }
 
     // -------------------------
