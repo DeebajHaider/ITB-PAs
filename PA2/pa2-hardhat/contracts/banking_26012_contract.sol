@@ -6,7 +6,9 @@ contract BankingSystem {
     // -------------------------
     // Data Structures
     // -------------------------
-    struct Account {
+
+    // account structure for each individual that will interact with the bank
+    struct Account {  
         string firstName;
         string lastName;
         uint principalLoan;
@@ -15,22 +17,29 @@ contract BankingSystem {
         bool exists; // IMPORTANT: track if account exists
     }
 
-    address private owner;
-    uint private loan_funds;
-    uint private depositInterestRate;
-    uint private loanInterestRate;
-    uint private operational_funds;
+    address private owner; //represents the owner
 
-    address[] public addressList;
-    mapping(address => Account) public userAccounts;
+    address[] public addressList;  //list of all customer addresses
+    //a hashmap linking key address to account object
+    //by default all the keys already exist with zeroed out data, this is why we use the exists variable
+    mapping(address => Account) public userAccounts; 
+
+    uint private depositInterestRate; //inteerst rate (%) applied ot customer deposits
+    uint private loan_funds; //loan reserve maintained by the bank, deposited by the owner. If it is 0, loans cannot be given out
+    uint private loanInterestRate; //interest rate (%) applied to customer loans
+    uint private operational_funds; //funds maintained by the bank to maintain internal expenses. deposited by owner, used to pay interest on depostits.
 
     // -------------------------
     // Constructor
     // -------------------------
     constructor() {
-        // TODO:
         // - set contract owner
         // - initialize interest rates and funds to 0
+        owner = tx.origin;
+        depositInterestRate = 0;
+        loanInterestRate = 0;
+        loan_funds = 0;
+        operational_funds = 0;
     }
 
     // -------------------------
@@ -38,16 +47,19 @@ contract BankingSystem {
     // -------------------------
     modifier onlyOwner() {
         // TODO: allow only owner
+        require((owner == tx.origin), "Only owner is allowed to call this function")
         _;
     }
 
     modifier notOwner() {
         // TODO: restrict owner from calling
+        require((owner != tx.origin), "Owner is not allowed to call this function")
         _;
     }
 
     modifier hasAccount() {
         // TODO: ensure sender has an account
+        require((userAccounts[tx.origin].exists) , "Account does not exist for this address")
         _;
     }
 
