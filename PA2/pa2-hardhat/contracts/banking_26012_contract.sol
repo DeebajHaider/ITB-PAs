@@ -95,7 +95,6 @@ contract BankingSystem {
         // TODO:
         // - ensure account exists
         // - return account fields
-        require((owner != tx.origin), "Error, Owner Prohibited");
         require((userAccounts[tx.origin].exists), "No Account");
         balance = userAccounts[tx.origin].balance;
         first_name = userAccounts[tx.origin].first_Name;
@@ -159,7 +158,7 @@ contract BankingSystem {
         require((owner != tx.origin), "Error, Owner Prohibited");
         require((userAccounts[tx.origin].exists), "No Account");
         require((userAccounts[recipient].exists), "Recipient account does not exist");    
-        require((transferAmount >= userAccounts[tx.origin].balance), "Insufficient Funds");
+        require((transferAmount <= userAccounts[tx.origin].balance), "Insufficient Funds");
         userAccounts[tx.origin].balance -= transferAmount;
         userAccounts[recipient].balance += transferAmount;
     }
@@ -251,6 +250,9 @@ contract BankingSystem {
         // TODO:
         // - only owner
         // - set depositInterestRate and loanInterestRate
+        require((owner == tx.origin), "Only the owner can set interest rates");
+        depositInterestRate = dep_interest_rate;
+        loanInterestRate = loan_interest_rate;
     }
 
     function addDepositInterest() public {
@@ -260,6 +262,15 @@ contract BankingSystem {
         // - ensure enough operational funds
         // - distribute interest to all users
         // - deduct from operational funds
+        require((owner == tx.origin), "Only the owner can add interest to deposits");
+        uint total_interest = 0;
+        for (uint i = 0; i < addressList.length; i++) {
+            uint interest = userAccounts[addressList[i]].balance * depositInterestRate / 100;
+            userAccounts[addressList[i]].balance += interest;
+            total_interest += interest;
+            require(operational_funds   >= total_interest, "Not enough operational funds to pay interest");
+        }
+        operational_funds -= total_interest;
     }
 
     function addLoanInterest() public {
@@ -267,6 +278,11 @@ contract BankingSystem {
         // - only owner
         // - loop through users
         // - add interest on principal loans
+        require((owner == tx.origin), "Only the owner can add interest to loans");
+        for (uint i = 0; i < addressList.length; i++) {
+            uint interest = userAccounts[addressList[i]].principal_Loan * loanInterestRate / 100;
+            userAccounts[addressList[i]].interest_Loan += interest;
+        }
     }
 
     // -------------------------
@@ -275,25 +291,30 @@ contract BankingSystem {
     function AmountInBank() public view returns(uint) {
         // TODO:
         // return contract ETH balance
+        return address(this).balance;
     }
 
     function DepositInterestRate() public view returns(uint) {
         // TODO:
         // return deposit interest rate
+        return depositInterestRate;
     }
 
     function LoanInterestRate() public view returns(uint) {
         // TODO:
         // return loan interest rate
+        return loanInterestRate;
     }
 
     function LoanFunds() public view returns(uint) {
         // TODO:
         // return loan funds
+        return loan_funds;
     }
 
     function OperationalFunds() public view returns(uint) {
         // TODO:
         // return operational funds
+        return operational_funds;
     }
 }
