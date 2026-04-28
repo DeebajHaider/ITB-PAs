@@ -47,19 +47,19 @@ contract BankingSystem {
     // -------------------------
     modifier onlyOwner() {
         // TODO: allow only owner
-        require((owner == tx.origin), "Only owner is allowed to call this function")
+        require((owner == tx.origin), "Only owner is allowed to call this function");
         _;
     }
 
     modifier notOwner() {
         // TODO: restrict owner from calling
-        require((owner != tx.origin), "Owner is not allowed to call this function")
+        require((owner != tx.origin), "Owner is not allowed to call this function");
         _;
     }
 
     modifier hasAccount() {
         // TODO: ensure sender has an account
-        require((userAccounts[tx.origin].exists) , "Account does not exist for this address")
+        require((userAccounts[tx.origin].exists) , "Account does not exist for this address");
         _;
     }
 
@@ -128,6 +128,10 @@ contract BankingSystem {
         // - ensure account exists
         // - enforce minimum deposit (>= 1 ether)
         // - update balance
+        require((owner != tx.origin), "Error, Owner Prohibited");
+        require((userAccounts[tx.origin].exists), "No Account");
+        require((msg.value >= 1 ether), "Low Deposit");
+        userAccounts[tx.origin].balance += msg.value;
     }
 
     function withDraw(uint withdrawalAmount) public {
@@ -136,6 +140,13 @@ contract BankingSystem {
         // - ensure account exists
         // - check sufficient balance
         // - deduct and transfer ETH
+        require((owner != tx.origin), "Error, Owner Prohibited");
+        require((userAccounts[tx.origin].exists), "No Account");
+        require((withdrawalAmount <= userAccounts[tx.origin].balance), "Insufficient Funds");
+        userAccounts[tx.origin].balance -= withdrawalAmount;
+        (bool success, ) = payable(tx.origin).call{value: withdrawalAmount}("");
+        require(success, "Withdrawal failed");
+
     }
 
     function TransferEth(address recipient, uint transferAmount) public {
@@ -145,6 +156,12 @@ contract BankingSystem {
         // - ensure recipient exists
         // - check balance
         // - transfer internally
+        require((owner != tx.origin), "Error, Owner Prohibited");
+        require((userAccounts[tx.origin].exists), "No Account");
+        require((userAccounts[recipient].exists), "Recipient account does not exist");    
+        require((transferAmount >= userAccounts[tx.origin].balance), "Insufficient Funds");
+        userAccounts[tx.origin].balance -= transferAmount;
+        userAccounts[recipient].balance += transferAmount;
     }
 
     // -------------------------
