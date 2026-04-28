@@ -171,12 +171,16 @@ contract BankingSystem {
         // TODO:
         // - only owner
         // - increase loan funds
+        require((owner == tx.origin), "Only Owner can call this function");
+        loan_funds += msg.value;
     }
 
     function depositOperationalFunds() public payable {
         // TODO:
         // - only owner
         // - increase operational funds
+        require((owner == tx.origin), "Only Owner can call this function");
+        operational_funds += msg.value;
     }
 
     function TakeLoan(uint loanAmount) public {
