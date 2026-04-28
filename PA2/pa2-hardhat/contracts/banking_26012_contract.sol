@@ -9,11 +9,11 @@ contract BankingSystem {
 
     // account structure for each individual that will interact with the bank
     struct Account {  
-        string firstName;
-        string lastName;
-        uint principalLoan;
-        uint interestLoan;
-        uint balance;
+        string first_Name;
+        string last_Name;
+        uint principal_Loan; //principal amount of outstanding loan that hasnt been paid by customer
+        uint interest_Loan; //outstanding interest amount on loan that hasnt been paid by customer
+        uint balance; //customer account balance
         bool exists; // IMPORTANT: track if account exists
     }
 
@@ -72,6 +72,17 @@ contract BankingSystem {
         // - ensure account doesn't already exist
         // - create account
         // - push address to addressList
+        require((owner != tx.origin), "Error, Owner Prohibited");
+        require((!userAccounts[tx.origin].exists), "Account already exists");
+        userAccounts[tx.origin] = Account({
+            first_Name: firstName,
+            last_Name: lastName,
+            principal_Loan: 0,
+            interest_Loan: 0,
+            balance: 0,
+            exists: true
+        });
+        addressList.push(tx.origin);
     }
 
     function getDetails() public view returns (
@@ -84,6 +95,13 @@ contract BankingSystem {
         // TODO:
         // - ensure account exists
         // - return account fields
+        require((owner != tx.origin), "Error, Owner Prohibited");
+        require((userAccounts[tx.origin].exists), "No Account");
+        balance = userAccounts[tx.origin].balance;
+        first_name = userAccounts[tx.origin].first_Name;
+        last_name = userAccounts[tx.origin].last_Name;
+        principal = userAccounts[tx.origin].principal_Loan;
+        interest = userAccounts[tx.origin].interest_Loan;
     }
 
     function closeAccount() public {
@@ -93,6 +111,13 @@ contract BankingSystem {
         // - ensure no loan due
         // - ensure balance is zero
         // - delete account
+        require((owner != tx.origin), "Error, Owner does not own an account");
+        require((userAccounts[tx.origin].exists), "No Account Exists");
+        require((userAccounts[tx.origin].principal_Loan == 0 && userAccounts[tx.origin].interest_Loan == 0), "Dues remaining, cannot close account before repayment");
+        require((userAccounts[tx.origin].balance == 0), "Outstanding balance, withdraw it to close your account");
+        //Make the ccount non existent, remove from address list.
+        //shouldnt delete from userAccounts since all accounts alredy esist in it.
+        userAccounts[tx.origin].exists = false;
     }
 
     // -------------------------
