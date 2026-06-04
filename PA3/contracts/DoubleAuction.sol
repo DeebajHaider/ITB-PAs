@@ -11,6 +11,9 @@ You will probably need to change that.
 
 contract DoubleAuction 
 {
+    uint constant private maxSize = 20; //maximum number of bids
+    uint constant private AuctionInterval = 30; //time in seconds. Contract shouldn't be called faster than this
+
     struct Bid {
         address bidder;
         uint quantity;
@@ -28,9 +31,6 @@ contract DoubleAuction
     uint[]    private resultQuantities;
     uint      private resultPrice;
     
-    uint constant private maxSize = 20; //maximum number of bids
-    uint constant private AuctionInterval = 30; //time in seconds. Contract shouldn't be called faster than this
-   
     function addBuyer(uint quantity, uint price) public {
         if (alreadyBid(msg.sender)) return;                                  // one bid per EOA per round
         require(buyers.length + sellers.length < maxSize, "too many bids");
@@ -44,10 +44,48 @@ contract DoubleAuction
         sellers.push(Bid(msg.sender, quantity, price));                      // no balance check for sellers
     }
 
-    function doubleAuction() public 
-    {
+    function doubleAuction() public {
+        // check time from block timestamp
+        require(block.timestamp >= lastAuctionTime + AuctionInterval, "auction interval not passed");
 
-        return;
+        // step 1: sort the bids
+        Bid[] memory s = sortBids(sellers, true);   // ascending  → s[0] cheapest
+        Bid[] memory b = sortBids(buyers, false);   // descending → b[0] highest
+
+        // step 2: find the smaller of the two lengths, we'll only iterate till then
+        uint n = s.length < b.length ? s.length : b.length;
+        // matches is essentially the same as k+1
+        uint matches = 0;
+        for (uint i = 0; i < n; i++) {
+            if (b[i].value >= s[i].value) matches++;
+            else break;
+        }
+
+        // rebuild results
+        delete resultSellers;
+        delete resultBuyers;
+        delete resultQuantities;
+        resultPrice = 0;
+
+        //step 3
+        if (matches > 0) {
+            //(s_k+b_k)/2
+            resultPrice = (s[matches - 1].value + b[matches - 1].value) / 2;
+            //up till k, we have matches, so we pick the lower quanity between the two, and add the results.
+            for (uint i = 0; i < matches; i++) {
+                resultSellers.push(s[i].bidder);
+                resultBuyers.push(b[i].bidder);
+                uint q = s[i].quantity < b[i].quantity ? s[i].quantity : b[i].quantity;
+                resultQuantities.push(q);
+            }
+        }
+
+        // clear bids
+        delete buyers;
+        delete sellers;
+
+        // reset the timer
+        lastAuctionTime = block.timestamp;
     }
 
     function getResults() public view returns(uint returnedInteger)
