@@ -88,9 +88,13 @@ contract DoubleAuction
         lastAuctionTime = block.timestamp;
     }
 
-    function getResults() public view returns(uint returnedInteger)
-    {
-        return 0;
+    function getResults() public view returns (
+        address[] memory matchedSellers,
+        address[] memory matchedBuyers,
+        uint price,
+        uint[] memory quantities
+    ) {
+        return (resultSellers, resultBuyers, resultPrice, resultQuantities);
     }
 
     function sortBids(Bid[] memory arr, bool ascending) private pure returns (Bid[] memory) {
