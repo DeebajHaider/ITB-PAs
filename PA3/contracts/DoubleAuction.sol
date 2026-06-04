@@ -31,16 +31,19 @@ contract DoubleAuction
     uint constant private maxSize = 20; //maximum number of bids
     uint constant private AuctionInterval = 30; //time in seconds. Contract shouldn't be called faster than this
    
-    function addBuyer(uint quantity, uint price) public
-    {
-    	return;
-    } 
+    function addBuyer(uint quantity, uint price) public {
+        if (alreadyBid(msg.sender)) return;                                  // one bid per EOA per round
+        require(buyers.length + sellers.length < maxSize, "too many bids");
+        require(msg.sender.balance >= quantity * price, "insufficient balance");
+        buyers.push(Bid(msg.sender, quantity, price));
+    }
 
-    function addSeller(uint quantity, uint price) public
-    {
-       return;
-    } 
-    
+    function addSeller(uint quantity, uint price) public {
+        if (alreadyBid(msg.sender)) return;
+        require(buyers.length + sellers.length < maxSize, "too many bids");
+        sellers.push(Bid(msg.sender, quantity, price));                      // no balance check for sellers
+    }
+
     function doubleAuction() public 
     {
 
@@ -66,6 +69,13 @@ contract DoubleAuction
             }
         }
         return arr;
-    }    
+    }
+
+    //helper for addSeller and addBuyer, check if the bidder has already made a bid in the current round.
+    function alreadyBid(address who) private view returns (bool) {
+        for (uint i = 0; i < buyers.length; i++)  if (buyers[i].bidder == who)  return true;
+        for (uint i = 0; i < sellers.length; i++) if (sellers[i].bidder == who) return true;
+        return false;
+    }
 }
 
