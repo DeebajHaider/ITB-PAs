@@ -26,14 +26,14 @@ const contractInstance = new web3.eth.Contract(contractAbi,contAddress)  //this 
 
 async function addBuyer(quantity, value, fromAddress)
 {
-  try {
-    await contractInstance.methods.addBuyer(quantity, value).send({ from: fromAddress, gasLimit: '0xe00000' });
-  } catch (e) {
-    // if the bid is rejected, log only for debugging, as test script captures std out
-    // console.error('bid rejected:', e.message);
-  }
-  //follows handout format
-  console.log('submitted a buy bid of: (' + quantity + ', ' + value + ') from account: ' + fromAddress);
+    try {
+        await contractInstance.methods.addBuyer(quantity, value).send({ from: fromAddress, gasLimit: '0xe00000' });
+    } catch (e) {
+        // if the bid is rejected, log only for debugging, as test script captures std out
+        // console.error('bid rejected:', e.message);
+    }
+    //follows handout format
+    console.log('submitted a buy bid of: (' + quantity + ', ' + value + ') from account: ' + fromAddress);
 }
 
 
@@ -45,14 +45,13 @@ async function main()
     price = args[3]; //value
     
     var myAccount = "";
-    await web3.eth.getAccounts().then(e => myAccount = e[accountNo]); //get the list of accounts on your node and put the first one in "myAccount"
+    await web3.eth.getAccounts().then(e => myAccount = e[accountNo]);
 //    console.log("Your account is: ", myAccount)
 
-    await web3.eth.personal.unlockAccount(myAccount, password, 60) //unlock that particular account using the password for 60 seconds. This authorizes you to act on the behalf of this account such as deploy contracts or send transactions or interact with contracts
+    await web3.eth.personal.unlockAccount(myAccount, password, 60)
 //    .then(console.log('Account unlocked!'));
 
    await addBuyer(quantity, price, myAccount);
-
 }
 
 main().then(() => process.exit(0));
