@@ -39,7 +39,7 @@ const contractInstance = new web3.eth.Contract(contractAbi) //this is a javascri
 {
 
  const ci = await contractInstance //deploy the contract
-    .deploy({ data: '0x'+contractByteCode, arguments: [contractInit] })
+    .deploy({ data: '0x'+contractByteCode})
     .send({ from: fromAddress, gasLimit: "0xe00000" }) //this is the gas limit. Do not set a gas limit too high as ethereum has a max limit (if you exceed this, you will get an error about having more than 53 bits)
     .on('transactionHash', function(hash){
       console.log("The transaction hash is: " + hash);
