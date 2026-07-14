@@ -31,7 +31,7 @@ async function getResults()
     const price      = result[2];   // clearing price C
     const quantities = result[3];   // Quantity per row
 
-    // No successful auction yet, or last auction had no matches → print nothing at all
+    // No successful auction yet, or last auction had no matches means print nothing
     if (sellers.length === 0) return;
 
     console.log('index\t sellAddresses\t\t\t\t\t buyAddresses\t\t\t\t\t C\t Q');

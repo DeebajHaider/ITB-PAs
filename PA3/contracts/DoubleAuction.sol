@@ -85,6 +85,7 @@ contract DoubleAuction
         delete sellers;
 
         // reset the timer
+        // uses block.timestamp because a contract doesnt have eccess to an external clock
         lastAuctionTime = block.timestamp;
     }
 
